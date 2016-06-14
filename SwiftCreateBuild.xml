@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<project name="DigiteServer" basedir="/app/Swift" default="CreateBuild">
+
+	<target name="Init">
+
+		<taskdef resource="net/sf/antcontrib/antlib.xml" >
+			<classpath>
+				<pathelement location="${antcontrib}" />
+			</classpath>
+		</taskdef>
+
+		<echo message="STARTING SWIFT BUILD." />
+
+		<condition property="is_unix" >
+			<os family="unix"/>
+		</condition>
+		
+		<condition property="is_windows" >
+			<os family="windows"/>
+		</condition>
+		
+		<if>
+		   <equals arg1="${is_windows}" arg2="true" />
+			<then>
+				<property name="os.rootDir" value="D:"/>
+			</then>
+		</if>
+		<if>
+		   <equals arg1="${is_unix}" arg2="true" />
+				<then>
+					<property name="os.rootDir" value="/app"/>
+				</then>
+		</if>
+		
+		<echo message="Unix : ${is_unix}"/>
+		<echo message="Windows : ${is_windows}"/>
+
+		<property file="${os.rootDir}/SwiftBuild/SwiftCreateBuild.properties"/>
+
+	</target>
+	
+	<target name="ProductGetLatest" depends="PlatformBuild">
+
+		<delete includeEmptyDirs="true" failonerror="false" >
+			<fileset dir="${ProjectFolder}/digite-ejb"/>
+			<fileset dir="${ProjectFolder}/digite-war"/>
+			<fileset dir="${ProjectFolder}/src"/>
+        </delete>
+		
+		<exec executable="svn">
+			<arg line="export -q --force --username gandivabuild --password pass@000 --trust-server-cert --non-interactive ${svnFolder}"/>
+			<arg line="${ProjectFolder}"/>
+        </exec>
+		
+		<copy todir="${ProjectFolder}/platform-ear/" overwrite="yes" >
+	       <fileset file="${ProjectFolder}/platform-files/digite.ear" />
+	    </copy>
+		
+		<echo message="Swift Get Latest from SVN completed successfully" />
+		
+	</target>
+	
+	<target name="BuildAll" depends="ProductGetLatest" >
+		<property file="${ProjectFolder}/build.properties"/>
+		<ant antfile="${ProjectFolder}/build.xml" >
+		</ant>
+		<if>
+		   <equals arg1="${is_windows}" arg2="true" />
+		<then>
+		   <exec executable="cmd">
+				<arg value="/c"/>
+				<arg value="${ProjectFolder}/ReleaseBuild.bat" />
+		  </exec>
+		</then>
+		</if>
+		<if>
+		   <equals arg1="${is_unix}" arg2="true" />
+		<then>
+		   <exec executable="/bin/bash">
+				<arg value="${ProjectFolder}/ReleaseBuild.sh" />
+		   </exec> 
+		</then>
+		</if>
+		
+	</target>
+	
+	<target name="PlatformBuild">
+	
+		<ant antfile="${PlatformBuildFile}" target="All" />
+		<echo message="Platform latest built successfully and Jars/Ear copied to Product path."/>
+
+	</target>
+	
+	<target name="CreateBuild" depends="Init, BuildAll" >
+		
+		<echo message="BUILD CREATED"/>
+		
+		<copy todir="${os.rootDir}/SwiftBuild/SwiftBuildOutput/build" overwrite="yes" >
+	       <fileset dir="${ProjectFolder}/dist" />
+	    </copy>
+		
+		<copy todir="${os.rootDir}/SwiftBuild/SwiftBuildOutput/build/" overwrite="yes" >
+			<fileset file="${ProjectFolder}/JBoss6BuildStructure/Swift_Jboss6.zip" />
+	    </copy>
+		
+		<copy todir="${os.rootDir}/SwiftBuild/SwiftBuildOutput/logs/" overwrite="yes" >
+			<fileset file="${os.rootDir}/SwiftBuild/antOutputLog.log" />
+	    </copy>
+		
+    </target>
+	
+</project>
